@@ -44,12 +44,14 @@ impl Client {
             .map_err(|_| TusError::RequestError)?;
         match response.status().as_u16() {
             200..=299 => {
-                // this is what we expect
+                // Happy path
                 op.handle_response(response, metadata)
             }
+            400 => Err(TusError::BadRequest),
             404 => Err(TusError::NotFoundError),
             409 => Err(TusError::WrongUploadOffsetError),
             413 => Err(TusError::FileTooLarge),
+            460 => Err(TusError::ChecksumMismatch),
             _ => Err(TusError::UnexpectedStatusCode(
                 response.status().as_u16().into(),
             )),

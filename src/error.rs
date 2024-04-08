@@ -11,6 +11,9 @@ pub enum TusError {
     /// The file specified was not found by the server.
     NotFoundError,
 
+    /// Checksum mismatch error
+    ChecksumMismatch,
+
     /// Invalid filename: {0}
     InvalidFilename(String),
 
@@ -52,6 +55,9 @@ pub enum TusError {
 
     /// Request Error
     RequestError,
+
+    /// Bad Request
+    BadRequest,
 
     /// Serde serialize error
     SerdeError,

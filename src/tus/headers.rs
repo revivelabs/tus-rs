@@ -1,4 +1,5 @@
-use reqwest::header::HeaderValue;
+use base64::Engine;
+use reqwest::header::{HeaderMap, HeaderValue};
 use std::collections::HashMap;
 
 /// Indicates a byte offset withing a resource.
@@ -46,92 +47,94 @@ pub fn default_headers() -> Headers {
     map
 }
 
-// struct TusHeaders {
-//     pub offset: Option<usize>,
-//     pub upload_length: Option<usize>,
-//     pub version: Option<String>,
-//     pub supported_versions: Option<Vec<String>>,
-//     pub resumable: Option<String>,
-//     pub extensions: Option<Vec<TusOp>>,
-//     pub max_size: Option<usize>,
-//     pub checksum_algorithms: Option<Vec<String>>,
-//     pub upload_metadata: Option<HashMap<String, String>>,
-//     pub location: Option<String>,
-// }
-//
-// impl From<HeaderMap> for TusHeaders {
-//     fn from(value: HeaderMap) -> Self {
-//         let version: Option<String> = value
-//             .get(TUS_RESUMABLE)
-//             .map_or(None, |v| Some(v.to_str().unwrap().to_string()));
-//
-//         let max_size: Option<usize> = value.get(TUS_MAX_SIZE).map_or(None, |v| {
-//             v.to_str()
-//                 .unwrap()
-//                 .to_string()
-//                 .parse::<usize>()
-//                 .unwrap()
-//                 .into()
-//         });
-//         let extensions = match value.get(TUS_EXTENSION) {
-//             Some(value) => Some(
-//                 value
-//                     .to_str()
-//                     .unwrap()
-//                     .split(',')
-//                     .map(str::parse)
-//                     .filter(Result::is_ok)
-//                     .map(Result::unwrap)
-//                     .collect::<Vec<TusOp>>(),
-//             ),
-//             _ => None,
-//         };
-//         let supported_versions: Option<Vec<String>> = value.get(TUS_VERSION).map_or(None, |v| {
-//             let versions = v
-//                 .to_str()
-//                 .unwrap()
-//                 .split(',')
-//                 .map(String::from)
-//                 .collect::<Vec<String>>();
-//             Some(versions)
-//         });
-//
-//         let checksum_algorithms: Option<Vec<String>> = match value.get(TUS_CHECKSUM_ALGO) {
-//             Some(value) => Some(
-//                 value
-//                     .to_str()
-//                     .unwrap()
-//                     .split(',')
-//                     .map(String::from)
-//                     .collect::<Vec<String>>(),
-//             ),
-//             _ => None,
-//         };
-//         let offset = value.get(UPLOAD_OFFSET).map_or(None, |v| {
-//             str::parse::<usize>(&v.to_str().unwrap_or("")).ok()
-//         });
-//         let upload_length = value.get(UPLOAD_LENGTH).map_or(None, |v| {
-//             str::parse::<usize>(&v.to_str().unwrap_or("")).ok()
-//         });
-//
-//         let resumable = value
-//             .get(TUS_RESUMABLE)
-//             .map_or(None, |v| v.to_string().into());
-//
-//         Self {
-//             offset,
-//             upload_length,
-//             version,
-//             supported_versions,
-//             resumable,
-//             extensions,
-//             max_size,
-//             checksum_algorithms,
-//             upload_metadata: todo!(),
-//             location: todo!(),
-//         }
-//     }
-// }
+pub struct TusHeaders {
+    pub offset: Option<usize>,
+    pub upload_length: Option<usize>,
+    pub version: Option<String>,
+    pub supported_versions: Option<Vec<String>>,
+    pub resumable: Option<String>,
+    pub extensions: Option<Vec<String>>,
+    pub max_size: Option<usize>,
+    pub checksum_algorithms: Option<Vec<String>>,
+    pub upload_metadata: Option<HashMap<String, String>>,
+    pub location: Option<String>,
+}
+
+impl From<HeaderMap> for TusHeaders {
+    fn from(value: HeaderMap) -> Self {
+        let headers: HashMap<String, String> = value
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        let version: Option<String> = headers
+            .get(TUS_RESUMABLE)
+            .map_or(None, |v| Some(v.to_string()));
+        let max_size: Option<usize> = headers
+            .get(TUS_MAX_SIZE)
+            .map_or(None, |v| v.parse::<usize>().unwrap().into());
+        let extensions = match headers.get(TUS_EXTENSION) {
+            Some(value) => Some(
+                value
+                    .split(',')
+                    .map(str::parse)
+                    .filter(Result::is_ok)
+                    .map(Result::unwrap)
+                    .collect::<Vec<String>>(),
+            ),
+            _ => None,
+        };
+        let supported_versions: Option<Vec<String>> = headers.get(TUS_VERSION).map_or(None, |v| {
+            let versions = v.split(',').map(String::from).collect::<Vec<String>>();
+            Some(versions)
+        });
+
+        let checksum_algorithms: Option<Vec<String>> = match headers.get(TUS_CHECKSUM_ALGO) {
+            Some(value) => Some(value.split(',').map(String::from).collect::<Vec<String>>()),
+            _ => None,
+        };
+        let offset = headers
+            .get(UPLOAD_OFFSET)
+            .map_or(None, |v| str::parse::<usize>(&v).ok());
+        let upload_length = headers
+            .get(UPLOAD_LENGTH)
+            .map_or(None, |v| str::parse::<usize>(&v).ok());
+        let resumable = headers.get(TUS_RESUMABLE).map(|s| s.to_owned());
+        let location = headers.get(TUS_LOCATION).map(|s| s.to_owned());
+        let upload_metadata = headers
+            .get(UPLOAD_METADATA)
+            .map_or(None, |list| {
+                base64::engine::general_purpose::STANDARD.decode(list).ok()
+            })
+            .map(|decoded| {
+                String::from_utf8(decoded).unwrap().split(";").fold(
+                    HashMap::new(),
+                    |mut acc, key_val| {
+                        let mut parts = key_val.splitn(2, ':');
+                        if let Some(key) = parts.next() {
+                            acc.insert(
+                                String::from(key),
+                                String::from(parts.next().unwrap_or_default()),
+                            );
+                        }
+                        acc
+                    },
+                )
+            });
+
+        Self {
+            offset,
+            upload_length,
+            version,
+            supported_versions,
+            resumable,
+            extensions,
+            max_size,
+            checksum_algorithms,
+            upload_metadata,
+            location,
+        }
+    }
+}
 
 /// Additional conversion methods for `HeaderValue`.
 pub trait HeaderValueExt {

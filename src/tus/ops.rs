@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use super::headers::UPLOAD_OFFSET;
+use super::headers::TusHeaders;
 use super::http::TusHttpMethod;
 use super::upload_meta::UploadMeta;
 
@@ -34,14 +34,9 @@ pub enum TusOp {
     // ************
     /// The server supports creating files.
     Creation,
-    //// The server supports setting expiration time on files and uploads.
-    Expiration,
-    /// The server supports verifying checksums of uploaded chunks.
-    Checksum,
+
     /// The server supports deleting files.
     Termination,
-    /// The server supports parallel uploads of a single file.
-    Concatenation,
 }
 
 impl From<TusOp> for TusHttpMethod {
@@ -58,11 +53,10 @@ impl TusOp {
             // all patch requests must contain
             // "Content-Type": "application/offset+octet-stream"
             TusOp::Upload => TusHttpMethod::Patch,
-            TusOp::Creation => TusHttpMethod::Post,
-            TusOp::Expiration => TusHttpMethod::Post,
-            TusOp::Checksum => TusHttpMethod::Post,
-            TusOp::Termination => TusHttpMethod::Post,
-            TusOp::Concatenation => TusHttpMethod::Post,
+            TusOp::Creation => TusHttpMethod::Post, // empty post request
+            // TusOp::Expiration => TusHttpMethod::Patch, //
+            TusOp::Termination => TusHttpMethod::Delete,
+            // TusOp::Concatenation => TusHttpMethod::Post,
         }
     }
 
@@ -104,17 +98,13 @@ impl TusOp {
         response: Response,
         metadata: &UploadMeta,
     ) -> Result<UploadMeta, TusError> {
+        let headers: TusHeaders = response.headers().clone().into();
         match self {
             TusOp::Creation => {
-                let remote_dest = response
-                    .headers()
-                    .get(tus::headers::TUS_LOCATION)
-                    .ok_or(TusError::MissingHeader(
-                        tus::headers::TUS_LOCATION.to_owned(),
-                    ))?
-                    .to_str()
-                    .map_err(|_| TusError::MissingHeader(tus::headers::TUS_LOCATION.to_owned()))?;
-                let remote_dest = PathBuf::from_str(remote_dest)
+                let remote_dest = headers.location.ok_or(TusError::MissingHeader(
+                    tus::headers::TUS_LOCATION.to_owned(),
+                ))?;
+                let remote_dest = PathBuf::from_str(&remote_dest)
                     .map_err(|_| TusError::MissingHeader(tus::headers::TUS_LOCATION.to_owned()))?
                     .into();
                 Ok(UploadMeta {
@@ -123,28 +113,11 @@ impl TusOp {
                 })
             }
             TusOp::GetOffset => {
-                let offset = response
-                    .headers()
-                    .get(tus::headers::UPLOAD_OFFSET)
-                    .ok_or(TusError::RequestError)?
-                    .to_str()?;
-                let offset = str::parse::<usize>(offset)?;
+                let offset = headers.offset.ok_or(TusError::RequestError)?;
                 Ok(metadata.with_bytes_uploaded(offset))
             }
             TusOp::Upload => {
-                // let headers: HashMap<String,String> = response
-                //     .headers()
-                //     .iter()
-                //     .map(|(k, v)| (format!("{k}"), format!("{}", v.to_string()))).collect();
-                let offset = response
-                    .headers()
-                    .get(UPLOAD_OFFSET)
-                    .map_or(None, |v| {
-                        str::parse::<usize>(&v.to_str().unwrap_or("")).ok()
-                    })
-                    .ok_or(TusError::MissingHeader(
-                        tus::headers::UPLOAD_OFFSET.to_owned(),
-                    ))?;
+                let offset = headers.offset.ok_or(TusError::RequestError)?;
                 Ok(metadata.with_bytes_uploaded(offset))
             }
             _ => Ok(metadata.clone()),
