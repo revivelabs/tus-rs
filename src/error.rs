@@ -1,0 +1,79 @@
+use std::{io, num::ParseIntError};
+
+use crate::tus;
+
+/// Enumerates the errors which can occur during operation
+#[derive(Debug, thiserror::Error, displaydoc::Display)]
+pub enum TusError {
+    /// UnexpectedStatusCode: {0}
+    UnexpectedStatusCode(usize),
+
+    /// The file specified was not found by the server.
+    NotFoundError,
+
+    /// Invalid filename: {0}
+    InvalidFilename(String),
+
+    /// Empty filename
+    EmptyFilename,
+
+    /// Missing requred header: {0}
+    MissingHeader(String),
+
+    /// Missing upload URL - must create one with creation extension first
+    MissingUploadUrl,
+
+    /// Invalid Header: {0}
+    InvalidHeader(String),
+
+    /// Invalid Header Value: {0}
+    InvalidHeaderValue(String),
+
+    /// IO error: {0}
+    IoError(io::Error),
+
+    /// Int parsing error: {0}
+    ParsingError(ParseIntError),
+
+    /// The size of the specified file, and the file size reported by the server do not match.
+    UnequalSizeError,
+
+    /// Unable to read the file specified: {0}.
+    FileReadError(String),
+
+    /// The `Client` tried to upload the file with an incorrect offset.
+    WrongUploadOffsetError,
+
+    /// The specified file is larger that what is supported by the server.
+    FileTooLarge,
+
+    /// An error occurred in the HTTP handler: {0}
+    HttpHandlerError(tus::errors::TusAPIError),
+
+    /// Request Error
+    RequestError,
+
+    /// Serde serialize error
+    SerdeError,
+
+    /// Invalid to str
+    ToStrError(reqwest::header::ToStrError),
+}
+
+impl From<reqwest::header::ToStrError> for TusError {
+    fn from(value: reqwest::header::ToStrError) -> Self {
+        TusError::ToStrError(value)
+    }
+}
+
+impl From<io::Error> for TusError {
+    fn from(e: io::Error) -> Self {
+        TusError::IoError(e)
+    }
+}
+
+impl From<ParseIntError> for TusError {
+    fn from(e: ParseIntError) -> Self {
+        TusError::ParsingError(e)
+    }
+}
