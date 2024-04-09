@@ -3,6 +3,9 @@ use tempfile::NamedTempFile;
 use tus_rs::client::*;
 use url::Url;
 
+// TODO: add github actions to test using the tusd docker image:
+// https://tus.github.io/tusd/getting-started/installation/#docker-container
+
 const TUS_ENDPOINT: &str = "http://127.0.0.1:8080/files/";
 
 fn create_temp_file() -> NamedTempFile {
