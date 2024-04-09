@@ -113,14 +113,15 @@ impl Client {
         }
     }
 
-    /// Upload a file
-    pub async fn upload(
+    
+    /// create a resource on the server to upload a file
+    pub async fn create(
         &self,
         file: &PathBuf,
         host: &Url,
         metadata: Option<HashMap<String, String>>,
         custom_headers: Option<HashMap<String, String>>,
-    ) -> Result<(), TusError> {
+    ) -> Result<UploadMeta, TusError> {
         // Create initial metadata
         let meta = UploadMeta::new(
             file.clone(),
@@ -132,8 +133,12 @@ impl Client {
         )?;
 
         // ** create resource on server **
-        let mut meta = self.run(TusOp::Creation, &meta, None).await?;
+        let meta = self.run(TusOp::Creation, &meta, None).await?;
+        Ok(meta)
+    }
 
+    /// Resume an upload 
+    pub async fn resume(&self, meta: &UploadMeta) -> Result<(), TusError> {
         // ** upload file **
         //
         // From Protocol:
@@ -146,6 +151,7 @@ impl Client {
         let file = File::open(&meta.file_path)?;
         let mut reader = BufReader::new(&file);
         let mut buffer = vec![0; meta.chunksize];
+        let mut meta = meta.clone();
 
         reader.seek(SeekFrom::Start(meta.status.bytes_uploaded as u64))?;
 
@@ -164,5 +170,19 @@ impl Client {
             }
         }
         Ok(())
+    }
+
+    /// Upload a file
+    ///
+    /// Creates a resource on server and uploads the file
+    pub async fn upload(
+        &self,
+        file: &PathBuf,
+        host: &Url,
+        metadata: Option<HashMap<String, String>>,
+        custom_headers: Option<HashMap<String, String>>,
+    ) -> Result<(), TusError> {
+        let meta = self.create(file, host, metadata, custom_headers).await?;
+        self.resume(&meta).await
     }
 }

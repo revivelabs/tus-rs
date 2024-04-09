@@ -28,6 +28,16 @@ async fn should_get_server_info() {
 
 #[tokio::test]
 async fn should_create_file() {
+    todo!()
+}
+
+#[tokio::test]
+async fn should_resume_file() {
+    todo!()
+}
+
+#[tokio::test]
+async fn should_create_and_upload_file() {
     let temp_file = create_temp_file();
     let path = temp_file.path().into();
     let client = Client::new();
