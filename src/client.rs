@@ -14,7 +14,7 @@ use url::Url;
 
 use crate::{
     error::TusError,
-    tus::{http::TusHttpMethod, upload_meta::UploadMeta, TusOp, TusServerInfo},
+    tus::{http::TusHttpMethod, ops::TusOp, upload_meta::UploadMeta, TusServerInfo},
 };
 
 pub struct Client {
@@ -31,12 +31,12 @@ impl Client {
         }
     }
 
-    /// Run TUS Operations 
+    /// Run TUS Operations
     ///
     /// Each operation implementation handles deriving the building blocks for creating the http
     /// request
     ///
-    /// Returns: `UploadMeta` 
+    /// Returns: `UploadMeta`
     async fn run(
         &self,
         op: TusOp,
@@ -116,7 +116,6 @@ impl Client {
         }
     }
 
-    
     /// create a resource on the server to upload a file
     pub async fn create(
         &self,
@@ -140,7 +139,7 @@ impl Client {
         Ok(meta)
     }
 
-    /// Resume an upload 
+    /// Resume an upload
     pub async fn resume(&self, meta: &UploadMeta) -> Result<(), TusError> {
         // ** upload file **
         //

@@ -6,7 +6,6 @@ pub mod upload_meta;
 
 use std::str::FromStr;
 
-pub use ops::*;
 use reqwest::header::HeaderMap;
 use serde;
 use serde::{Deserialize, Serialize};

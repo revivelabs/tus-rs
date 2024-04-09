@@ -12,7 +12,7 @@ use super::upload_meta::UploadMeta;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum TusOp {
+pub(crate) enum TusOp {
     // ************
     // Core
     // ************
@@ -32,8 +32,8 @@ pub enum TusOp {
     /// Create a new file resource on the server
     Create,
 
-    /// The server supports deleting files.
-    Termination,
+    // If the server
+    // Termination,
 }
 
 impl From<TusOp> for TusHttpMethod {
@@ -51,7 +51,7 @@ impl TusOp {
             // "Content-Type": "application/offset+octet-stream"
             TusOp::Upload => TusHttpMethod::Patch,
             TusOp::Create => TusHttpMethod::Post, // empty post request
-            TusOp::Termination => TusHttpMethod::Delete,
+            // TusOp::Termination => TusHttpMethod::Delete,
         }
     }
 
