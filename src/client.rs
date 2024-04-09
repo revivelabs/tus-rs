@@ -31,9 +31,12 @@ impl Client {
         }
     }
 
-    /// Create an upload with metadata
+    /// Run TUS Operations 
     ///
-    /// Returns: `UploadMeta` with the `remote_dest` value set to the location on the server
+    /// Each operation implementation handles deriving the building blocks for creating the http
+    /// request
+    ///
+    /// Returns: `UploadMeta` 
     async fn run(
         &self,
         op: TusOp,
