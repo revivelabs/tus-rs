@@ -136,7 +136,7 @@ impl Client {
         )?;
 
         // ** create resource on server **
-        let meta = self.run(TusOp::Creation, &meta, None).await?;
+        let meta = self.run(TusOp::Create, &meta, None).await?;
         Ok(meta)
     }
 

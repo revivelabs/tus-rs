@@ -4,10 +4,11 @@ pub mod http;
 pub mod ops;
 pub mod upload_meta;
 
+use std::collections::HashMap;
 use std::str::FromStr;
 
 pub use ops::*;
-use reqwest::header::HeaderMap;
+use reqwest::header::{HeaderMap, HeaderName};
 use serde;
 use serde::{Deserialize, Serialize};
 
@@ -32,11 +33,6 @@ impl UploadStatus {
     }
 }
 
-// pub struct UploadStatus {
-//     length: usize,
-//     offset: usize,
-// }
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TusServerInfo {
     pub version: Option<String>,
@@ -45,16 +41,6 @@ pub struct TusServerInfo {
     pub supported_versions: Vec<String>,
     pub supported_checksum_algorithms: Option<Vec<String>>,
 }
-
-// impl Into<HeaderMap> for HashMap<String, String> {
-//     fn into(self) -> HeaderMap {
-//         let mut headers = Self::new();
-//         for (key, value) in map {
-//             headers.insert(HeaderName::from_str(&key), value.parse().unwrap());
-//         }
-//         headers
-//     }
-// }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -76,9 +62,8 @@ impl FromStr for TusExtension {
     }
 }
 
-impl From<HeaderMap> for TusServerInfo {
-    fn from(value: HeaderMap) -> Self {
-        let headers: TusHeaders = value.into();
+impl From<TusHeaders> for TusServerInfo {
+    fn from(headers: TusHeaders) -> Self {
         let version: Option<String> = headers.version;
         let max_size: Option<usize> = headers.max_size;
         let extensions: Vec<TusExtension> = headers.extensions.unwrap_or_default();
@@ -91,5 +76,12 @@ impl From<HeaderMap> for TusServerInfo {
             supported_versions,
             supported_checksum_algorithms,
         };
+    }
+}
+
+impl From<HeaderMap> for TusServerInfo {
+    fn from(value: HeaderMap) -> Self {
+        let headers: TusHeaders = value.into();
+        headers.into()
     }
 }

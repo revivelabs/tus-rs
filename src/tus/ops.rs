@@ -31,19 +31,16 @@ pub enum TusOp {
     /// Resume upload
     Upload,
 
-    // ************
-    // Extensions
-    // ************
-    /// The server supports creating files.
-    Creation,
+    /// Create a new file resource on the server
+    Create,
 
     /// The server supports deleting files.
     Termination,
 }
 
 impl From<TusOp> for TusHttpMethod {
-    fn from(extension: TusOp) -> Self {
-        extension.method()
+    fn from(op: TusOp) -> Self {
+        op.method()
     }
 }
 
@@ -55,10 +52,8 @@ impl TusOp {
             // all patch requests must contain
             // "Content-Type": "application/offset+octet-stream"
             TusOp::Upload => TusHttpMethod::Patch,
-            TusOp::Creation => TusHttpMethod::Post, // empty post request
-            // TusOp::Expiration => TusHttpMethod::Patch, //
+            TusOp::Create => TusHttpMethod::Post, // empty post request
             TusOp::Termination => TusHttpMethod::Delete,
-            // TusOp::Concatenation => TusHttpMethod::Post,
         }
     }
 
@@ -70,7 +65,7 @@ impl TusOp {
             headers.extend(custom_headers.clone());
         }
         match self {
-            TusOp::Creation => {
+            TusOp::Create => {
                 headers.insert(
                     tus::headers::UPLOAD_LENGTH.to_owned(),
                     format!("{}", metadata.status.size),
@@ -109,7 +104,7 @@ impl TusOp {
     ) -> Result<UploadMeta, TusError> {
         let headers: TusHeaders = response.headers().clone().into();
         match self {
-            TusOp::Creation => {
+            TusOp::Create => {
                 let remote_dest = headers.location.ok_or(TusError::MissingHeader(
                     tus::headers::TUS_LOCATION.to_owned(),
                 ))?;
