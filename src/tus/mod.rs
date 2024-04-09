@@ -4,11 +4,10 @@ pub mod http;
 pub mod ops;
 pub mod upload_meta;
 
-use std::collections::HashMap;
 use std::str::FromStr;
 
 pub use ops::*;
-use reqwest::header::{HeaderMap, HeaderName};
+use reqwest::header::HeaderMap;
 use serde;
 use serde::{Deserialize, Serialize};
 

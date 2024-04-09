@@ -3,8 +3,6 @@ use reqwest::Response;
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::metadata;
-use std::path::PathBuf;
 use std::str::FromStr;
 use url::Url;
 

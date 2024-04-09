@@ -151,7 +151,7 @@ impl UploadMeta {
     /// Convenience method to update remote_dest property
     pub fn with_remote_dest(&self, remote_url: String) -> Result<Self, TusError> {
         let remote_url = Url::parse(&remote_url)
-            .map_err(|e| TusError::StringParseError("Malformed Url".to_string()))?;
+            .map_err(|_| TusError::StringParseError("Malformed Url".to_string()))?;
         Ok(UploadMeta {
             remote_url: Some(remote_url),
             ..self.clone()
