@@ -78,7 +78,6 @@ impl FromStr for TusExtension {
 
 impl From<HeaderMap> for TusServerInfo {
     fn from(value: HeaderMap) -> Self {
-        dbg!(&value);
         let headers: TusHeaders = value.into();
         let version: Option<String> = headers.version;
         let max_size: Option<usize> = headers.max_size;

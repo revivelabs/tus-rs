@@ -43,17 +43,11 @@ impl Client {
         let headers = op.headers(metadata)?;
         let url = op.url_for_meta(metadata);
         let request = self.make_request(&url, op.method(), headers, body)?;
-        println!("******************************");
-        dbg!(&request);
-        println!("******************************");
         let response = self
             .client
             .execute(request)
             .await
             .map_err(|e| TusError::RequestError(format!("{e}")))?;
-        println!("******************************");
-        dbg!(&response);
-        println!("******************************");
         match response.status().as_u16() {
             200..=299 => {
                 // Happy path

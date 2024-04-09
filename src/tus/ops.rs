@@ -81,15 +81,10 @@ impl TusOp {
                     tus::headers::CONTENT_TYPE.to_owned(),
                     "application/offset+octet-stream".to_string(),
                 );
-                // headers.insert(
-                //     tus::headers::UPLOAD_LENGTH.to_owned(),
-                //     format!("{}", metadata.status.size),
-                // );
                 headers.insert(
                     tus::headers::UPLOAD_OFFSET.to_owned(),
                     format!("{}", metadata.status.bytes_uploaded),
                 );
-                dbg!(&metadata);
             }
             _ => {}
         }
@@ -130,7 +125,6 @@ impl TusOp {
                 let offset = headers
                     .offset
                     .ok_or(TusError::RequestError("Missing offset".to_string()))?;
-                dbg!(offset);
                 Ok(metadata.with_bytes_uploaded(offset))
             }
             _ => Ok(metadata.clone()),
