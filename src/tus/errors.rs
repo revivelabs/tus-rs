@@ -12,7 +12,7 @@ pub enum TusAPIError {
 
     /// Could not retrieve offset
     CouldNotRetrieveOffset,
-    
+
     /// Could not retriev location
     CouldNotRetrieveLocation,
 
