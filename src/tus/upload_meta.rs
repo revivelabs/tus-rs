@@ -98,6 +98,10 @@ impl UploadMeta {
         Ok(filename)
     }
 
+    pub fn upload_complete(&self) -> bool {
+        self.status.bytes_uploaded >= self.status.size
+    }
+
     /// Builds and returns the values to be added to the UPLOAD_METADATA value
     /// for this upload
     ///

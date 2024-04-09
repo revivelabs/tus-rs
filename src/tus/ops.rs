@@ -120,7 +120,7 @@ impl TusOp {
                     .ok_or(TusError::RequestError("Missing offset".to_string()))?;
                 Ok(metadata.with_bytes_uploaded(offset))
             }
-            _ => Ok(metadata.clone()),
+            // _ => Ok(metadata.clone()),
         }
     }
 }

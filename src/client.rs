@@ -139,8 +139,13 @@ impl Client {
         Ok(meta)
     }
 
+    /// Get offset for an existing resource
+    pub async fn get_offset(&self, meta: &UploadMeta) -> Result<UploadMeta, TusError> {
+        self.run(TusOp::GetOffset, &meta, None).await
+    }
+
     /// Resume an upload
-    pub async fn resume(&self, meta: &UploadMeta) -> Result<(), TusError> {
+    pub async fn resume(&self, meta: &UploadMeta) -> Result<UploadMeta, TusError> {
         // ** upload file **
         //
         // From Protocol:
@@ -167,11 +172,11 @@ impl Client {
             }
             let body = Some(&buffer[..bytes_count]);
             meta = self.run(TusOp::Upload, &meta, body).await?;
-            if meta.status.bytes_uploaded >= meta.status.size {
+            if meta.upload_complete() {
                 break;
             }
         }
-        Ok(())
+        Ok(meta)
     }
 
     /// Upload a file
@@ -183,7 +188,7 @@ impl Client {
         host: &Url,
         metadata: Option<HashMap<String, String>>,
         custom_headers: Option<HashMap<String, String>>,
-    ) -> Result<(), TusError> {
+    ) -> Result<UploadMeta, TusError> {
         let meta = self.create(file, host, metadata, custom_headers).await?;
         self.resume(&meta).await
     }
