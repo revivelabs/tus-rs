@@ -22,7 +22,7 @@ pub const TUS_EXTENSION: &'static str = "tus-extension";
 /// Integer indicating the maximum allowed size of an entire upload in bytes.
 pub const TUS_MAX_SIZE: &'static str = "tus-max-size";
 
-///
+/// Checksum algorithms supported by the server
 pub const TUS_CHECKSUM_ALGO: &'static str = "tus-checksum-algorithm";
 
 /// Use this header if its environment does not support the PATCH or DELETE methods.
@@ -59,6 +59,7 @@ pub struct TusHeaders {
     pub max_size: Option<usize>,
     pub checksum_algorithms: Option<Vec<String>>,
     pub upload_metadata: Option<HashMap<String, String>>,
+    pub upload_defer_length: Option<usize>,
     pub location: Option<String>,
 }
 
@@ -71,6 +72,9 @@ impl From<HeaderMap> for TusHeaders {
         let version: Option<String> = headers.get(TUS_RESUMABLE).map(|v| v.to_string());
         let max_size: Option<usize> = headers
             .get(TUS_MAX_SIZE)
+            .map(|v| v.parse::<usize>().unwrap().into());
+        let upload_defer_length = headers
+            .get(UPLOAD_DEFER_LENGTH)
             .map(|v| v.parse::<usize>().unwrap().into());
         let extensions: Option<Vec<TusExtension>> = headers.get(TUS_EXTENSION).map(|string| {
             string
@@ -118,6 +122,7 @@ impl From<HeaderMap> for TusHeaders {
             upload_length,
             version,
             supported_versions,
+            upload_defer_length,
             resumable,
             extensions,
             max_size,
