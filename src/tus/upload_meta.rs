@@ -18,10 +18,10 @@ pub struct UploadMeta {
 
     /// path on the server to the file creation request is sent
     ///
-    /// e.g. "path/to/file/on/server"
+    /// set by the server
     ///
-    /// relative to `upload_host`
-    pub remote_dest: PathBuf,
+    /// e.g. "[upload_host]/path/to/file/on/server"
+    pub remote_url: Option<Url>,
 
     /// Status of the upload
     pub status: UploadStatus,
@@ -51,7 +51,6 @@ impl UploadMeta {
     pub fn new(
         file_path: PathBuf,
         upload_host: Url,
-        remote_dest: PathBuf,
         bytes_uploaded: Option<usize>,
         extra_meta: Option<HashMap<String, String>>,
         custom_headers: Option<HashMap<String, String>>,
@@ -74,25 +73,13 @@ impl UploadMeta {
             status,
             error_count: 0,
             version: "1".to_string(), // Version of TUS protocol
-            remote_dest,
+            remote_url: None,
             // with value present
             mime_type: None, // TODO: Set this based on file extension?
             chunksize: chunksize.unwrap_or(5 * 1024 * 1024),
         };
 
         Ok(meta)
-    }
-
-    /// Full upload url - [upload_host]/[remote_dest]
-    pub fn upload_url(&self) -> Result<Url, TusError> {
-        let dest = self.remote_dest.to_str().ok_or(TusError::InvalidFilename(
-            "Unable to convert to string".to_string(),
-        ))?;
-        let url = self
-            .upload_host
-            .join(dest)
-            .map_err(|_| TusError::InvalidFilename("Unable to join to full URL".to_string()))?;
-        Ok(url)
     }
 
     pub fn filename(&self) -> Result<String, TusError> {
@@ -159,5 +146,15 @@ impl UploadMeta {
             },
             ..self.clone()
         }
+    }
+
+    /// Convenience method to update remote_dest property
+    pub fn with_remote_dest(&self, remote_url: String) -> Result<Self, TusError> {
+        let remote_url = Url::parse(&remote_url)
+            .map_err(|e| TusError::StringParseError("Malformed Url".to_string()))?;
+        Ok(UploadMeta {
+            remote_url: Some(remote_url),
+            ..self.clone()
+        })
     }
 }

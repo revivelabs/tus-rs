@@ -3,8 +3,10 @@ use reqwest::Response;
 use serde;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs::metadata;
 use std::path::PathBuf;
 use std::str::FromStr;
+use url::Url;
 
 use super::headers::TusHeaders;
 use super::http::TusHttpMethod;
@@ -79,18 +81,30 @@ impl TusOp {
                     tus::headers::CONTENT_TYPE.to_owned(),
                     "application/offset+octet-stream".to_string(),
                 );
-                headers.insert(
-                    tus::headers::UPLOAD_LENGTH.to_owned(),
-                    format!("{}", metadata.status.size),
-                );
+                // headers.insert(
+                //     tus::headers::UPLOAD_LENGTH.to_owned(),
+                //     format!("{}", metadata.status.size),
+                // );
                 headers.insert(
                     tus::headers::UPLOAD_OFFSET.to_owned(),
                     format!("{}", metadata.status.bytes_uploaded),
                 );
+                dbg!(&metadata);
             }
             _ => {}
         }
         Ok(headers)
+    }
+
+    pub fn url_for_meta(&self, metadata: &UploadMeta) -> Url {
+        match self {
+            TusOp::Upload => metadata
+                .remote_url
+                .clone()
+                .unwrap_or(metadata.upload_host.clone())
+                .clone(),
+            _ => metadata.upload_host.clone(),
+        }
     }
 
     pub fn handle_response(
@@ -104,13 +118,7 @@ impl TusOp {
                 let remote_dest = headers.location.ok_or(TusError::MissingHeader(
                     tus::headers::TUS_LOCATION.to_owned(),
                 ))?;
-                let remote_dest = PathBuf::from_str(&remote_dest)
-                    .map_err(|_| TusError::MissingHeader(tus::headers::TUS_LOCATION.to_owned()))?
-                    .into();
-                Ok(UploadMeta {
-                    remote_dest,
-                    ..metadata.clone()
-                })
+                metadata.with_remote_dest(remote_dest)
             }
             TusOp::GetOffset => {
                 let offset = headers
@@ -122,6 +130,7 @@ impl TusOp {
                 let offset = headers
                     .offset
                     .ok_or(TusError::RequestError("Missing offset".to_string()))?;
+                dbg!(offset);
                 Ok(metadata.with_bytes_uploaded(offset))
             }
             _ => Ok(metadata.clone()),

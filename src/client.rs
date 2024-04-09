@@ -41,15 +41,19 @@ impl Client {
         body: Option<&[u8]>,
     ) -> Result<UploadMeta, TusError> {
         let headers = op.headers(metadata)?;
-        let upload_url = metadata
-            .upload_url()
-            .map_err(|_| TusError::MissingUploadUrl)?;
-        let request = self.make_request(&upload_url, op.method(), headers, body)?;
+        let url = op.url_for_meta(metadata);
+        let request = self.make_request(&url, op.method(), headers, body)?;
+        println!("******************************");
+        dbg!(&request);
+        println!("******************************");
         let response = self
             .client
             .execute(request)
             .await
             .map_err(|e| TusError::RequestError(format!("{e}")))?;
+        println!("******************************");
+        dbg!(&response);
+        println!("******************************");
         match response.status().as_u16() {
             200..=299 => {
                 // Happy path
@@ -80,12 +84,13 @@ impl Client {
                 HeaderValue::from_str(&v).map_err(|_| TusError::InvalidHeaderValue(v.clone()))?;
             map.insert(name, value);
         }
-        let body = body.map_or(Vec::new(), |v| Vec::from(v));
-        let request = self
+        let mut request = self
             .client
             .request(method.to_method(), url.clone())
-            .headers(map)
-            .body(body);
+            .headers(map);
+        if let Some(body) = body {
+            request = request.body(Vec::from(body));
+        }
         request
             .build()
             .map_err(|e| TusError::RequestError(format!("{e}")))
@@ -101,7 +106,6 @@ impl Client {
             .await
             .map_err(|e| TusError::ReqwestError(e))?;
 
-        dbg!(&response);
         match response.status().as_u16() {
             204 | 200 => {
                 // 204 No Content or 200 OK
@@ -119,16 +123,14 @@ impl Client {
     pub async fn upload(
         &self,
         file: &PathBuf,
-        host: Url,
-        remote_dest: PathBuf,
+        host: &Url,
         metadata: Option<HashMap<String, String>>,
         custom_headers: Option<HashMap<String, String>>,
     ) -> Result<(), TusError> {
         // Create initial metadata
         let meta = UploadMeta::new(
             file.clone(),
-            host,
-            remote_dest,
+            host.clone(),
             None,
             metadata,
             custom_headers,
@@ -136,7 +138,7 @@ impl Client {
         )?;
 
         // ** create resource on server **
-        let meta = self.run(TusOp::Creation, &meta, None).await?;
+        let mut meta = self.run(TusOp::Creation, &meta, None).await?;
 
         // ** upload file **
         //
@@ -154,7 +156,6 @@ impl Client {
         reader.seek(SeekFrom::Start(meta.status.bytes_uploaded as u64))?;
 
         // TODO: if upload fails, persist upload meta data to resume with later
-
         loop {
             let bytes_count = reader.read(&mut buffer)?;
             if bytes_count == 0 {
@@ -163,53 +164,11 @@ impl Client {
                 ));
             }
             let body = Some(&buffer[..bytes_count]);
-
-            let meta = self.run(TusOp::Upload, &meta, body).await?;
+            meta = self.run(TusOp::Upload, &meta, body).await?;
             if meta.status.bytes_uploaded >= meta.status.size {
                 break;
             }
         }
         Ok(())
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::io::Write;
-
-    use tempfile::NamedTempFile;
-    use url::form_urlencoded::parse;
-
-    use super::*;
-
-    const TUS_ENDPOINT: &str = "http://127.0.0.1:8080/files/";
-
-    fn create_temp_file() -> NamedTempFile {
-        let mut temp_file = NamedTempFile::new().unwrap();
-        let buffer: Vec<u8> = (0..(1024 * 1024)).map(|_| rand::random::<u8>()).collect();
-        for _ in 0..20 {
-            temp_file.write_all(&buffer[..]).unwrap();
-        }
-        temp_file
-    }
-
-    #[tokio::test]
-    async fn should_get_server_info() {
-        let url = Url::parse(TUS_ENDPOINT).unwrap();
-        let client = Client::new();
-        let result = client.get_server_info(&url).await;
-        dbg!(&result);
-        assert!(result.is_ok());
-    }
-
-    // #[test]
-    // fn should_create_file() {
-    //
-    //     let temp_file = create_temp_file();
-    //     let client = Client::new();
-    //
-    //     let result = client.run(TusOp::Creation, )
-    //
-    //
-    // }
 }
