@@ -2,41 +2,43 @@ use base64::Engine;
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::collections::HashMap;
 
+use super::{FromStr, TusExtension};
+
 /// Indicates a byte offset withing a resource.
-pub const UPLOAD_OFFSET: &'static str = "Upload-Offset";
+pub const UPLOAD_OFFSET: &'static str = "upload-offset";
 
 /// Indicates the size of the entire upload in bytes.
-pub const UPLOAD_LENGTH: &'static str = "Upload-Length";
+pub const UPLOAD_LENGTH: &'static str = "upload-length";
 
 /// A comma-separated list of protocol versions supported by the server.
-pub const TUS_VERSION: &'static str = "Tus-Version";
+pub const TUS_VERSION: &'static str = "tus-version";
 
 /// The version of the protocol used by the client or the server.
-pub const TUS_RESUMABLE: &'static str = "Tus-Resumable";
+pub const TUS_RESUMABLE: &'static str = "tus-resumable";
 
 /// A comma-separated list of the extensions supported by the server.
-pub const TUS_EXTENSION: &'static str = "Tus-Extension";
+pub const TUS_EXTENSION: &'static str = "tus-extension";
 
 /// Integer indicating the maximum allowed size of an entire upload in bytes.
-pub const TUS_MAX_SIZE: &'static str = "Tus-Max-Size";
+pub const TUS_MAX_SIZE: &'static str = "tus-max-size";
 
 ///
-pub const TUS_CHECKSUM_ALGO: &'static str = "Tus-Checksum-Algorithm";
+pub const TUS_CHECKSUM_ALGO: &'static str = "tus-checksum-algorithm";
 
 /// Use this header if its environment does not support the PATCH or DELETE methods.
-pub const X_HTTP_METHOD_OVERRIDE: &'static str = "X-HTTP-Method-Override";
+pub const X_HTTP_METHOD_OVERRIDE: &'static str = "x-http-method-override";
 
 /// Use this header if its environment does not support the PATCH or DELETE methods.
-pub const CONTENT_TYPE: &'static str = "Content-Type";
+pub const CONTENT_TYPE: &'static str = "content-type";
 
 /// Use this header if its environment does not support the PATCH or DELETE methods.
-//pub const UPLOAD_DEFER_LENGTH: &'static str = "upload-defer-length";
+pub const UPLOAD_DEFER_LENGTH: &'static str = "upload-defer-length";
 
 /// Use this header if its environment does not support the PATCH or DELETE methods.
-pub const UPLOAD_METADATA: &'static str = "Upload-Metadata";
+pub const UPLOAD_METADATA: &'static str = "upload-metadata";
 
 /// Use this header when creating an upload to get the location of the upload on the server
-pub const TUS_LOCATION: &'static str = "Location";
+pub const TUS_LOCATION: &'static str = "location";
 
 /// An alias for `HashMap<String, String>`, which represents a set of HTTP headers and their values.
 pub type Headers = HashMap<String, String>;
@@ -53,7 +55,7 @@ pub struct TusHeaders {
     pub version: Option<String>,
     pub supported_versions: Option<Vec<String>>,
     pub resumable: Option<String>,
-    pub extensions: Option<Vec<String>>,
+    pub extensions: Option<Vec<TusExtension>>,
     pub max_size: Option<usize>,
     pub checksum_algorithms: Option<Vec<String>>,
     pub upload_metadata: Option<HashMap<String, String>>,
@@ -66,32 +68,22 @@ impl From<HeaderMap> for TusHeaders {
             .iter()
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect();
-        let version: Option<String> = headers
-            .get(TUS_RESUMABLE)
-            .map_or(None, |v| Some(v.to_string()));
+        let version: Option<String> = headers.get(TUS_RESUMABLE).map(|v| v.to_string());
         let max_size: Option<usize> = headers
             .get(TUS_MAX_SIZE)
-            .map_or(None, |v| v.parse::<usize>().unwrap().into());
-        let extensions = match headers.get(TUS_EXTENSION) {
-            Some(value) => Some(
-                value
-                    .split(',')
-                    .map(str::parse)
-                    .filter(Result::is_ok)
-                    .map(Result::unwrap)
-                    .collect::<Vec<String>>(),
-            ),
-            _ => None,
-        };
-        let supported_versions: Option<Vec<String>> = headers.get(TUS_VERSION).map_or(None, |v| {
-            let versions = v.split(',').map(String::from).collect::<Vec<String>>();
-            Some(versions)
+            .map(|v| v.parse::<usize>().unwrap().into());
+        let extensions: Option<Vec<TusExtension>> = headers.get(TUS_EXTENSION).map(|string| {
+            string
+                .split(',')
+                .filter_map(|s| TusExtension::from_str(s).ok())
+                .collect()
         });
-
-        let checksum_algorithms: Option<Vec<String>> = match headers.get(TUS_CHECKSUM_ALGO) {
-            Some(value) => Some(value.split(',').map(String::from).collect::<Vec<String>>()),
-            _ => None,
-        };
+        let supported_versions: Option<Vec<String>> = headers
+            .get(TUS_VERSION)
+            .map(|v| v.split(',').map(String::from).collect::<Vec<String>>());
+        let checksum_algorithms: Option<Vec<String>> = headers
+            .get(TUS_CHECKSUM_ALGO)
+            .map(|value| value.split(',').map(String::from).collect::<Vec<String>>());
         let offset = headers
             .get(UPLOAD_OFFSET)
             .map_or(None, |v| str::parse::<usize>(&v).ok());

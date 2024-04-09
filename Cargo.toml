@@ -9,10 +9,13 @@ edition = "2021"
 base64 = "0.22.0"
 camino = { version = "1.1.6", features = ["serde"] }
 displaydoc = "0.2.4"
+rand = "0.8.5"
 reqwest = "0.12.2"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
+tempfile = "3.10.1"
 thiserror = "1.0.58"
+tokio = { version = "1.37.0", features = ["full"] }
 url = { version = "2.5.0", features = ["serde"] }
 uuid = { version = "1.8.0", features = ["v4", "serde"] }
 

@@ -38,6 +38,9 @@ pub enum TusError {
     /// Int parsing error: {0}
     ParsingError(ParseIntError),
 
+    /// String parsing error: {0}
+    StringParseError(String),
+
     /// The size of the specified file, and the file size reported by the server do not match.
     UnequalSizeError,
 
@@ -53,8 +56,11 @@ pub enum TusError {
     /// An error occurred in the HTTP handler: {0}
     HttpHandlerError(tus::errors::TusAPIError),
 
-    /// Request Error
-    RequestError,
+    /// Request Error: {0}
+    RequestError(String),
+
+    /// Reqwest Error: {0}
+    ReqwestError(reqwest::Error),
 
     /// Bad Request
     BadRequest,

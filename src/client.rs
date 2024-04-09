@@ -18,11 +18,19 @@ use crate::{
 };
 
 pub struct Client {
-    pub use_method_override: bool,
+    // pub use_method_override: bool,
     client: RequestClient,
 }
 
 impl Client {
+    pub fn new() -> Self {
+        let client = RequestClient::new();
+        Self {
+            client,
+            // use_method_override,
+        }
+    }
+
     /// Create an upload with metadata
     ///
     /// Returns: `UploadMeta` with the `remote_dest` value set to the location on the server
@@ -41,7 +49,7 @@ impl Client {
             .client
             .execute(request)
             .await
-            .map_err(|_| TusError::RequestError)?;
+            .map_err(|e| TusError::RequestError(format!("{e}")))?;
         match response.status().as_u16() {
             200..=299 => {
                 // Happy path
@@ -78,7 +86,9 @@ impl Client {
             .request(method.to_method(), url.clone())
             .headers(map)
             .body(body);
-        request.build().map_err(|_| TusError::RequestError)
+        request
+            .build()
+            .map_err(|e| TusError::RequestError(format!("{e}")))
     }
 
     /// Get the server info
@@ -89,13 +99,19 @@ impl Client {
             .client
             .execute(request)
             .await
-            .map_err(|_| TusError::RequestError)?;
+            .map_err(|e| TusError::ReqwestError(e))?;
+
+        dbg!(&response);
         match response.status().as_u16() {
             204 | 200 => {
                 // 204 No Content or 200 OK
                 Ok(response.headers().to_owned().into())
             }
-            _ => Err(TusError::RequestError),
+            _ => Err(TusError::RequestError(format!(
+                "Error code: {}, Text: {}",
+                response.status(),
+                response.text().await.unwrap_or("".to_string())
+            ))),
         }
     }
 
@@ -155,4 +171,45 @@ impl Client {
         }
         Ok(())
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    use tempfile::NamedTempFile;
+    use url::form_urlencoded::parse;
+
+    use super::*;
+
+    const TUS_ENDPOINT: &str = "http://127.0.0.1:8080/files/";
+
+    fn create_temp_file() -> NamedTempFile {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        let buffer: Vec<u8> = (0..(1024 * 1024)).map(|_| rand::random::<u8>()).collect();
+        for _ in 0..20 {
+            temp_file.write_all(&buffer[..]).unwrap();
+        }
+        temp_file
+    }
+
+    #[tokio::test]
+    async fn should_get_server_info() {
+        let url = Url::parse(TUS_ENDPOINT).unwrap();
+        let client = Client::new();
+        let result = client.get_server_info(&url).await;
+        dbg!(&result);
+        assert!(result.is_ok());
+    }
+
+    // #[test]
+    // fn should_create_file() {
+    //
+    //     let temp_file = create_temp_file();
+    //     let client = Client::new();
+    //
+    //     let result = client.run(TusOp::Creation, )
+    //
+    //
+    // }
 }

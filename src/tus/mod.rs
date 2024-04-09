@@ -4,10 +4,15 @@ pub mod http;
 pub mod ops;
 pub mod upload_meta;
 
+use std::str::FromStr;
+
 pub use ops::*;
 use reqwest::header::HeaderMap;
 use serde;
 use serde::{Deserialize, Serialize};
+
+use crate::error::TusError;
+use crate::tus::headers::TusHeaders;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UploadStatus {
@@ -36,7 +41,7 @@ impl UploadStatus {
 pub struct TusServerInfo {
     pub version: Option<String>,
     pub max_size: Option<usize>,
-    pub extensions: Option<Vec<TusOp>>,
+    pub extensions: Vec<TusExtension>,
     pub supported_versions: Vec<String>,
     pub supported_checksum_algorithms: Option<Vec<String>>,
 }
@@ -51,55 +56,35 @@ pub struct TusServerInfo {
 //     }
 // }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TusExtension {
+    Creation,
+    CreationWithUpload,
+    Termination,
+    Expiration,
+    Concatenation,
+    CreationDeferLength,
+}
+
+impl FromStr for TusExtension {
+    type Err = TusError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        serde_json::from_str(&format!("\"{s}\""))
+            .map_err(|_| TusError::StringParseError(format!("Invalid TusExtension String: {s}")))
+    }
+}
+
 impl From<HeaderMap> for TusServerInfo {
     fn from(value: HeaderMap) -> Self {
-        let version: Option<String> = value
-            .get(headers::TUS_RESUMABLE)
-            .map_or(None, |v| Some(v.to_str().unwrap().to_string()));
-
-        let max_size: Option<usize> = value.get(headers::TUS_MAX_SIZE).map_or(None, |v| {
-            v.to_str()
-                .unwrap()
-                .to_string()
-                .parse::<usize>()
-                .unwrap()
-                .into()
-        });
-        let extensions = match value.get(headers::TUS_EXTENSION) {
-            Some(value) => Some(
-                value
-                    .to_str()
-                    .unwrap()
-                    .split(',')
-                    .map(str::parse)
-                    .filter(Result::is_ok)
-                    .map(Result::unwrap)
-                    .collect::<Vec<TusOp>>(),
-            ),
-            _ => None,
-        };
-        let supported_versions: Vec<String> =
-            value.get(headers::TUS_VERSION).map_or(Vec::new(), |v| {
-                v.to_str()
-                    .unwrap()
-                    .split(',')
-                    .map(String::from)
-                    .collect::<Vec<String>>()
-            });
-
-        let supported_checksum_algorithms: Option<Vec<String>> =
-            match value.get(headers::TUS_CHECKSUM_ALGO) {
-                Some(value) => Some(
-                    value
-                        .to_str()
-                        .unwrap()
-                        .split(',')
-                        .map(String::from)
-                        .collect::<Vec<String>>(),
-                ),
-                _ => None,
-            };
-
+        dbg!(&value);
+        let headers: TusHeaders = value.into();
+        let version: Option<String> = headers.version;
+        let max_size: Option<usize> = headers.max_size;
+        let extensions: Vec<TusExtension> = headers.extensions.unwrap_or_default();
+        let supported_versions: Vec<String> = headers.supported_versions.unwrap_or_default();
+        let supported_checksum_algorithms: Option<Vec<String>> = headers.checksum_algorithms;
         return Self {
             version,
             max_size,
@@ -109,4 +94,3 @@ impl From<HeaderMap> for TusServerInfo {
         };
     }
 }
-

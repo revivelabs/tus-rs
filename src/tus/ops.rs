@@ -113,11 +113,15 @@ impl TusOp {
                 })
             }
             TusOp::GetOffset => {
-                let offset = headers.offset.ok_or(TusError::RequestError)?;
+                let offset = headers
+                    .offset
+                    .ok_or(TusError::RequestError("Missing offset".to_string()))?;
                 Ok(metadata.with_bytes_uploaded(offset))
             }
             TusOp::Upload => {
-                let offset = headers.offset.ok_or(TusError::RequestError)?;
+                let offset = headers
+                    .offset
+                    .ok_or(TusError::RequestError("Missing offset".to_string()))?;
                 Ok(metadata.with_bytes_uploaded(offset))
             }
             _ => Ok(metadata.clone()),
