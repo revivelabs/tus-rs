@@ -1,9 +1,7 @@
-use std::{io::Write, path::PathBuf, str::FromStr};
-
+use std::io::Write;
 use tus_rs::client::*;
-
 use tempfile::NamedTempFile;
-use url::{form_urlencoded::parse, Url};
+use url::Url;
 
 const TUS_ENDPOINT: &str = "http://127.0.0.1:8080/files/";
 
