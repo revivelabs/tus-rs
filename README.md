@@ -1,3 +1,8 @@
 # `tus-rs`
 
-Rust Port of [TusKit](https://github.com/tus/TusKit), with influence from [tus-client](https://github.com/jonstodle/tus)
+Rust implementation of TUS protocol for resumable uploads.
+
+Heavily influenced by:
+
+- [`tus-client`](https://github.com/jonstodle/tus)
+- [`TusKit`](https://github.com/tus/TusKit)
