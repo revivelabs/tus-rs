@@ -19,7 +19,7 @@ pub enum TusHttpMethod {
     /// Used to get server info
     Options,
 
-    /// used in termination extension
+    /// used in Terminate extension
     Delete,
 }
 

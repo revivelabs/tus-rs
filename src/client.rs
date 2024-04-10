@@ -146,14 +146,14 @@ impl Client {
 
     /// Resume an upload
     pub async fn resume(&self, meta: &UploadMeta) -> Result<UploadMeta, TusError> {
-        // ** upload file **
+        // # Upload file
         //
         // From Protocol:
         //
-        // The Client SHOULD send all the remaining bytes of an upload in a single PATCH
-        // request, but MAY also use multiple small requests successively
-        // for scenarios where this is desirable. One example for these
-        // situations is when the Checksum extension is used.
+        // > The Client SHOULD send all the remaining bytes of an upload in a single PATCH
+        // > request, but MAY also use multiple small requests successively
+        // > for scenarios where this is desirable. One example for these
+        // > situations is when the Checksum extension is used.
 
         let file = File::open(&meta.file_path)?;
         let mut reader = BufReader::new(&file);
@@ -162,7 +162,8 @@ impl Client {
 
         reader.seek(SeekFrom::Start(meta.status.bytes_uploaded as u64))?;
 
-        // TODO: if upload fails, persist upload meta data to resume with later
+        // TODO: if upload fails, return upload metadata to resume with later
+        // likely need different function return type
         loop {
             let bytes_count = reader.read(&mut buffer)?;
             if bytes_count == 0 {
@@ -191,5 +192,11 @@ impl Client {
     ) -> Result<UploadMeta, TusError> {
         let meta = self.create(file, host, metadata, custom_headers).await?;
         self.resume(&meta).await
+    }
+
+    /// Delete a file
+    pub async fn terminate(&self, meta: &UploadMeta) -> Result<(), TusError> {
+        let result = self.run(TusOp::Terminate, meta, None).await;
+        Ok(())
     }
 }

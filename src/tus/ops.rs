@@ -32,8 +32,8 @@ pub(crate) enum TusOp {
     /// Create a new file resource on the server
     Create,
 
-    // If the server
-    // Termination,
+    /// End upload and delete file
+    Terminate,
 }
 
 impl From<TusOp> for TusHttpMethod {
@@ -51,7 +51,7 @@ impl TusOp {
             // "Content-Type": "application/offset+octet-stream"
             TusOp::Upload => TusHttpMethod::Patch,
             TusOp::Create => TusHttpMethod::Post, // empty post request
-            // TusOp::Termination => TusHttpMethod::Delete,
+            TusOp::Terminate => TusHttpMethod::Delete,
         }
     }
 
@@ -120,7 +120,7 @@ impl TusOp {
                     .ok_or(TusError::RequestError("Missing offset".to_string()))?;
                 Ok(metadata.with_bytes_uploaded(offset))
             }
-            // _ => Ok(metadata.clone()),
+            TusOp::Terminate => Ok(metadata.clone()),
         }
     }
 }

@@ -45,7 +45,7 @@ pub struct TusServerInfo {
 pub enum TusExtension {
     Creation,
     CreationWithUpload,
-    Termination,
+    Terminate,
     Expiration,
     Concatenation,
     CreationDeferLength,

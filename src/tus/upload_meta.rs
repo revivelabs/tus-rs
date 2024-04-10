@@ -47,6 +47,34 @@ pub struct UploadMeta {
     pub chunksize: usize,
 }
 
+/// Validates the filename of `file_path` and checks to make sure it is well-formatted
+/// i.e.
+/// - not a directory
+/// - file exists
+/// - filename != ""
+/// - filename != "/"
+fn validate_path(file_path: &PathBuf) -> Result<(), TusError> {
+    if !file_path.exists() {
+        return Err(TusError::FileReadError("File not found".to_string()));
+    }
+    if file_path.is_dir() {
+        return Err(TusError::FileReadError("Cannot be a directory".to_string()));
+    }
+    let filename = file_path.file_name().ok_or(TusError::EmptyFilename)?;
+    let filename = filename
+        .to_str()
+        .ok_or(TusError::InvalidFilename(
+            "Unable to convert to string".to_string(),
+        ))?
+        .to_string();
+    if filename == "/".to_string() {
+        return Err(TusError::InvalidFilename(
+            "Filename cannot be '/'".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 impl UploadMeta {
     pub fn new(
         file_path: PathBuf,
@@ -56,12 +84,7 @@ impl UploadMeta {
         custom_headers: Option<HashMap<String, String>>,
         chunksize: Option<usize>,
     ) -> Result<Self, TusError> {
-        if !file_path.exists() {
-            return Err(TusError::FileReadError("File not found".to_string()));
-        }
-        if file_path.is_dir() {
-            return Err(TusError::FileReadError("Cannot be a directory".to_string()));
-        }
+        validate_path(&file_path)?;
         let file_meta = file_path.metadata()?;
         let size: usize = file_meta.len() as usize;
         let status = UploadStatus::new(size, bytes_uploaded);
@@ -82,22 +105,18 @@ impl UploadMeta {
         Ok(meta)
     }
 
-    pub fn filename(&self) -> Result<String, TusError> {
-        let filename = self.file_path.file_name().ok_or(TusError::EmptyFilename)?;
-        let filename = filename
+    /// Convenience getter to get the filename of the filepath as a string
+    pub fn filename(&self) -> String {
+        self.file_path
+            .file_name()
+            .ok_or(TusError::EmptyFilename)
+            .unwrap()
             .to_str()
-            .ok_or(TusError::InvalidFilename(
-                "Unable to convert to string".to_string(),
-            ))?
-            .to_string();
-        if filename == "/".to_string() {
-            return Err(TusError::InvalidFilename(
-                "Filename cannot be '/'".to_string(),
-            ));
-        }
-        Ok(filename)
+            .unwrap()
+            .to_string()
     }
 
+    /// Check to see if `status.bytes_uploaded` >= `status.size`
     pub fn upload_complete(&self) -> bool {
         self.status.bytes_uploaded >= self.status.size
     }
@@ -108,7 +127,7 @@ impl UploadMeta {
     /// Calculates filesize and sets mimetype if present
     pub fn data(&self) -> Result<HashMap<String, String>, TusError> {
         let mut h = HashMap::new();
-        h.insert("filename".to_string(), self.filename()?);
+        h.insert("filename".to_string(), self.filename());
         if let Some(mime) = &self.mime_type {
             h.insert("filetype".to_string(), mime.clone());
         }

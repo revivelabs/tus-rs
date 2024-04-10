@@ -39,10 +39,10 @@ async fn should_create_file() {
     assert!(result.is_ok());
 }
 
-#[tokio::test]
-async fn should_resume_file() {
-    todo!()
-}
+// #[tokio::test]
+// async fn should_resume_file() {
+//     todo!()
+// }
 
 #[tokio::test]
 async fn should_create_and_upload_file() {
@@ -51,6 +51,22 @@ async fn should_create_and_upload_file() {
     let client = Client::new();
     let host = Url::parse(TUS_ENDPOINT).unwrap();
     let result = client.upload(&path, &host, None, None).await;
+    dbg!(&result);
+    assert!(result.is_ok());
+}
+
+
+#[tokio::test]
+async fn should_create_and_terminate_file() {
+    let temp_file = create_temp_file(1024 * 100);
+    let path = temp_file.path().into();
+    let client = Client::new();
+    let host = Url::parse(TUS_ENDPOINT).unwrap();
+    let result = client.create(&path, &host, None, None).await;
+    dbg!(&result);
+    assert!(result.is_ok());
+    let meta = result.unwrap();
+    let result = client.terminate(&meta).await;
     dbg!(&result);
     assert!(result.is_ok());
 }
