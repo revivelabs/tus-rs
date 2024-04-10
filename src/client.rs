@@ -194,9 +194,9 @@ impl Client {
         self.resume(&meta).await
     }
 
-    /// Delete a file
+    /// Terminate upload and delete file
     pub async fn terminate(&self, meta: &UploadMeta) -> Result<(), TusError> {
-        let result = self.run(TusOp::Terminate, meta, None).await;
+        let _result = self.run(TusOp::Terminate, meta, None).await;
         Ok(())
     }
 }
