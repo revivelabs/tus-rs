@@ -10,6 +10,7 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue},
     Client as RequestClient, Request,
 };
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 use crate::{
@@ -17,18 +18,35 @@ use crate::{
     tus::{http::TusHttpMethod, ops::TusOp, upload_meta::UploadMeta, TusServerInfo},
 };
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ClientOptions {
+    /// chunksize to use for uploading very large files
+    ///
+    /// Defaults to 6MB
+    pub chunksize: usize,
+}
+
+impl ClientOptions {
+    pub fn new(chunksize: usize) -> Self {
+        Self { chunksize }
+    }
+
+    pub fn default() -> Self {
+        Self {
+            chunksize: 6 * 1024 * 1024, // 6MB
+        }
+    }
+}
+
 pub struct Client {
-    // pub use_method_override: bool,
     client: RequestClient,
+    options: ClientOptions,
 }
 
 impl Client {
-    pub fn new() -> Self {
+    pub fn new(options: ClientOptions) -> Self {
         let client = RequestClient::new();
-        Self {
-            client,
-            // use_method_override,
-        }
+        Self { client, options }
     }
 
     /// Run TUS Operations
@@ -56,13 +74,17 @@ impl Client {
                 // Happy path
                 op.handle_response(response, metadata)
             }
-            400 => Err(TusError::BadRequest),
+            400 => Err(TusError::BadRequest(format!(
+                "{}",
+                response.text().await.unwrap_or("".to_string())
+            ))),
             404 => Err(TusError::NotFoundError),
             409 => Err(TusError::WrongUploadOffsetError),
             413 => Err(TusError::FileTooLarge),
             460 => Err(TusError::ChecksumMismatch),
             _ => Err(TusError::UnexpectedStatusCode(
                 response.status().as_u16().into(),
+                response.text().await.unwrap_or("".to_string()),
             )),
         }
     }
@@ -125,14 +147,7 @@ impl Client {
         custom_headers: Option<HashMap<String, String>>,
     ) -> Result<UploadMeta, TusError> {
         // Create initial metadata
-        let meta = UploadMeta::new(
-            file.clone(),
-            host.clone(),
-            None,
-            metadata,
-            custom_headers,
-            None,
-        )?;
+        let meta = UploadMeta::new(file.clone(), host.clone(), None, metadata, custom_headers)?;
 
         // ** create resource on server **
         let meta = self.run(TusOp::Create, &meta, None).await?;
@@ -157,7 +172,7 @@ impl Client {
 
         let file = File::open(&meta.file_path)?;
         let mut reader = BufReader::new(&file);
-        let mut buffer = vec![0; meta.chunksize];
+        let mut buffer = vec![0; self.options.chunksize];
         let mut meta = meta.clone();
 
         reader.seek(SeekFrom::Start(meta.status.bytes_uploaded as u64))?;

@@ -5,8 +5,8 @@ use crate::tus;
 /// Enumerates the errors which can occur during operation
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum TusError {
-    /// UnexpectedStatusCode: {0}
-    UnexpectedStatusCode(usize),
+    /// UnexpectedStatusCode: ({0}) : {1}
+    UnexpectedStatusCode(usize, String),
 
     /// The file specified was not found by the server.
     NotFoundError,
@@ -62,8 +62,8 @@ pub enum TusError {
     /// Reqwest Error: {0}
     ReqwestError(reqwest::Error),
 
-    /// Bad Request
-    BadRequest,
+    /// Bad Request - {0}
+    BadRequest(String),
 
     /// Serde serialize error
     SerdeError,

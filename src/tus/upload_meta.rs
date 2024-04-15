@@ -8,6 +8,7 @@ use url::Url;
 
 use super::UploadStatus;
 
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UploadMeta {
     /// upload_host for the file - e.g. "http://www.tusserver.com"
@@ -42,9 +43,6 @@ pub struct UploadMeta {
 
     /// number of times upload attempted/failed
     pub error_count: usize,
-
-    /// chunksize to use for uploading very large files
-    pub chunksize: usize,
 }
 
 /// Validates the filename of `file_path` and checks to make sure it is well-formatted
@@ -82,7 +80,6 @@ impl UploadMeta {
         bytes_uploaded: Option<usize>,
         extra_meta: Option<HashMap<String, String>>,
         custom_headers: Option<HashMap<String, String>>,
-        chunksize: Option<usize>,
     ) -> Result<Self, TusError> {
         validate_path(&file_path)?;
         let file_meta = file_path.metadata()?;
@@ -99,22 +96,21 @@ impl UploadMeta {
             remote_url: None,
             // with value present
             mime_type: None, // TODO: Set this based on file extension?
-            chunksize: chunksize.unwrap_or(5 * 1024 * 1024),
         };
 
         Ok(meta)
     }
 
-    /// Convenience getter to get the filename of the filepath as a string
-    pub fn filename(&self) -> String {
-        self.file_path
-            .file_name()
-            .ok_or(TusError::EmptyFilename)
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string()
-    }
+    // /// Convenience getter to get the filename of the filepath as a string
+    // pub fn filename(&self) -> String {
+    //     self.file_path
+    //         .file_name()
+    //         .ok_or(TusError::EmptyFilename)
+    //         .unwrap()
+    //         .to_str()
+    //         .unwrap()
+    //         .to_string()
+    // }
 
     /// Check to see if `status.bytes_uploaded` >= `status.size`
     pub fn upload_complete(&self) -> bool {
@@ -127,7 +123,7 @@ impl UploadMeta {
     /// Calculates filesize and sets mimetype if present
     pub fn data(&self) -> Result<HashMap<String, String>, TusError> {
         let mut h = HashMap::new();
-        h.insert("filename".to_string(), self.filename());
+        h.insert("filename".to_string(), self.file_path.to_str().unwrap().to_string());
         if let Some(mime) = &self.mime_type {
             h.insert("filetype".to_string(), mime.clone());
         }

@@ -20,7 +20,7 @@ fn create_temp_file(size: usize) -> NamedTempFile {
 #[tokio::test]
 async fn should_get_server_info() {
     let url = Url::parse(TUS_ENDPOINT).unwrap();
-    let client = Client::new();
+    let client = Client::new(ClientOptions::default());
     let result = client.get_server_info(&url).await;
     dbg!(&result);
     assert!(result.is_ok());
@@ -32,7 +32,7 @@ async fn should_get_server_info() {
 async fn should_create_file() {
     let temp_file = create_temp_file(128);
     let path = temp_file.path().into();
-    let client = Client::new();
+    let client = Client::new(ClientOptions::default());
     let host = Url::parse(TUS_ENDPOINT).unwrap();
     let result = client.create(&path, &host, None, None).await;
     dbg!(&result);
@@ -48,19 +48,18 @@ async fn should_create_file() {
 async fn should_create_and_upload_file() {
     let temp_file = create_temp_file(1024 * 100);
     let path = temp_file.path().into();
-    let client = Client::new();
+    let client = Client::new(ClientOptions::default());
     let host = Url::parse(TUS_ENDPOINT).unwrap();
     let result = client.upload(&path, &host, None, None).await;
     dbg!(&result);
     assert!(result.is_ok());
 }
 
-
 #[tokio::test]
 async fn should_create_and_terminate_file() {
     let temp_file = create_temp_file(1024 * 100);
     let path = temp_file.path().into();
-    let client = Client::new();
+    let client = Client::new(ClientOptions::default());
     let host = Url::parse(TUS_ENDPOINT).unwrap();
     let result = client.create(&path, &host, None, None).await;
     dbg!(&result);
