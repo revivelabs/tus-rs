@@ -1,3 +1,12 @@
+use crate::{
+    error::TusError,
+    tus::{http::TusHttpMethod, ops::TusOp, upload_meta::UploadMeta, TusServerInfo},
+};
+use reqwest::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    Client as RequestClient, Request,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
@@ -5,18 +14,7 @@ use std::{
     path::PathBuf,
     str::FromStr,
 };
-
-use reqwest::{
-    header::{HeaderMap, HeaderName, HeaderValue},
-    Client as RequestClient, Request,
-};
-use serde::{Deserialize, Serialize};
 use url::Url;
-
-use crate::{
-    error::TusError,
-    tus::{http::TusHttpMethod, ops::TusOp, upload_meta::UploadMeta, TusServerInfo},
-};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ClientOptions {
@@ -44,6 +42,7 @@ pub struct Client {
 }
 
 impl Client {
+    /// Create a new TUS Client
     pub fn new(options: ClientOptions) -> Self {
         let client = RequestClient::new();
         Self { client, options }
@@ -138,7 +137,7 @@ impl Client {
         }
     }
 
-    /// create a resource on the server to upload a file
+    /// Create a resource on the server to upload a file
     pub async fn create(
         &self,
         file: &PathBuf,
