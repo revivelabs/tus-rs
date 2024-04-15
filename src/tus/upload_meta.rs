@@ -8,7 +8,6 @@ use url::Url;
 
 use super::UploadStatus;
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UploadMeta {
     /// upload_host for the file - e.g. "http://www.tusserver.com"
@@ -123,7 +122,10 @@ impl UploadMeta {
     /// Calculates filesize and sets mimetype if present
     pub fn data(&self) -> Result<HashMap<String, String>, TusError> {
         let mut h = HashMap::new();
-        h.insert("filename".to_string(), self.file_path.to_str().unwrap().to_string());
+        h.insert(
+            "filename".to_string(),
+            self.file_path.to_str().unwrap().to_string(),
+        );
         if let Some(mime) = &self.mime_type {
             h.insert("filetype".to_string(), mime.clone());
         }
