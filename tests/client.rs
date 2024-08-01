@@ -25,7 +25,7 @@ async fn should_get_server_info() {
     dbg!(&result);
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert!(result.extensions.len() > 0);
+    assert!(!result.extensions.is_empty());
 }
 
 #[tokio::test]
